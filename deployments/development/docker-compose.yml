@@ -1,0 +1,37 @@
+version: '3.7'
+
+services:
+  server:
+    image: graphql_golang_example
+    build:
+      context: ../../
+      dockerfile: ./deployments/development/server/Dockerfile
+    ports:
+      - '8080:8080'
+    volumes:
+      - ../../:/graphql
+    depends_on:
+      - db
+    environment:
+      MYSQL_DBNAME: graphql
+      MYSQL_USER: graphql
+      MYSQL_PASS: graphql
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_SKIPSQLCMD: "true"
+      MYSQL_SSLMODE: "false"
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_DATABASE: graphql
+      MYSQL_USER: graphql
+      MYSQL_PASSWORD: graphql
+      MYSQL_ROOT_PASSWORD: graphql
+    command: mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci
+    volumes:
+      - graphql_golang_example_db:/var/lib/mysql
+    ports:
+      - '3306:3306'
+volumes:
+  graphql_golang_example_db:
+    driver: local

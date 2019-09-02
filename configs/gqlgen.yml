@@ -1,0 +1,16 @@
+# .gqlgen.yml example
+#
+# Refer to https://gqlgen.com/config/
+# for detailed .gqlgen.yml documentation.
+
+schema:
+- api/schema/**/*.graphql
+exec:
+  filename: internal/graphql/generated.go
+model:
+  filename: internal/graphql/models_gen.go
+autobind: []
+# models:
+#   Demo:
+#     model: github.com/stobita/graphql-golang-example/internal/graphql.Demo
+
