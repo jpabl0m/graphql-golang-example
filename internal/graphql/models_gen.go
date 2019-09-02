@@ -2,19 +2,20 @@
 
 package graphql
 
-type NewTodo struct {
-	Text   string `json:"text"`
-	UserID string `json:"userId"`
+type AddCommentInput struct {
+	PostID  string `json:"postId"`
+	Content string `json:"content"`
 }
 
-type Todo struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
-	Done bool   `json:"done"`
-	User *User  `json:"user"`
+type AddCommentPayload struct {
+	Comment *Comment `json:"comment"`
 }
 
-type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+type AddPostInput struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
+type AddPostPayload struct {
+	Post *Post `json:"post"`
 }

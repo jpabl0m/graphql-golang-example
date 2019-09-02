@@ -1,0 +1,9 @@
+input AddPostInput {
+  title: String!
+  content: String!
+}
+
+input AddCommentInput {
+  postId: ID!
+  content: String!
+}

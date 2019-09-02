@@ -10,7 +10,11 @@ exec:
 model:
   filename: internal/graphql/models_gen.go
 autobind: []
-# models:
-#   Demo:
-#     model: github.com/stobita/graphql-golang-example/internal/graphql.Demo
+models:
+  User:
+    model: github.com/stobita/graphql-golang-example/internal/graphql.User
+  Post:
+    model: github.com/stobita/graphql-golang-example/internal/graphql.Post
+  Comment:
+    model: github.com/stobita/graphql-golang-example/internal/graphql.Comment
 
