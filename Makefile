@@ -13,7 +13,7 @@ dev-logs:
 migrate-create:
 	docker-compose -f $(DEV_COMPOSE) exec server goose -dir=./db/migrations create $(NAME) sql
 migrate-up:
-	docker-compose -f $(DEV_COMPOSE) exec server go run cmd/$(APP_NAME)/main.go migrate
+	docker-compose -f $(DEV_COMPOSE) exec server go run cmd/migrate/migrate.go
 sqlboiler:
 	docker-compose -f $(DEV_COMPOSE) exec server sqlboiler mysql --wipe -o ./internal/rdb -c ./configs/sqlboiler.toml -p rdb --no-auto-timestamps --no-tests
 
