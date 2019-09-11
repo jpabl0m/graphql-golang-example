@@ -20,8 +20,9 @@ func Run() {
 
 	r := gin.Default()
 
-	r.POST("/", rootHandler())
-	r.GET("/query", queryHandler())
+	// r.Use(authenticationMiddleware())
+	r.GET("/", rootHandler())
+	r.POST("/query", queryHandler())
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(r.Run(":" + port))
