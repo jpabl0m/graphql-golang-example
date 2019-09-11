@@ -2,10 +2,10 @@ package server
 
 import (
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/99designs/gqlgen/handler"
+	"github.com/gin-gonic/gin"
 	"github.com/stobita/graphql-golang-example/internal/graphql"
 	"github.com/stobita/graphql-golang-example/internal/usecase"
 )
@@ -18,13 +18,27 @@ func Run() {
 		port = defaultPort
 	}
 
-	u := usecase.New()
+	r := gin.Default()
 
-	resolver := graphql.NewResolver(u)
-
-	http.Handle("/", handler.Playground("GraphQL playground", "/query"))
-	http.Handle("/query", handler.GraphQL(graphql.NewExecutableSchema(graphql.Config{Resolvers: resolver})))
+	r.POST("/", rootHandler())
+	r.GET("/query", queryHandler())
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(r.Run(":" + port))
+}
+
+func queryHandler() gin.HandlerFunc {
+	u := usecase.New()
+	resolver := graphql.NewResolver(u)
+	h := handler.GraphQL(graphql.NewExecutableSchema(graphql.Config{Resolvers: resolver}))
+	return func(c *gin.Context) {
+		h.ServeHTTP(c.Writer, c.Request)
+	}
+}
+
+func rootHandler() gin.HandlerFunc {
+	h := handler.Playground("GraphQL playground", "/query")
+	return func(c *gin.Context) {
+		h.ServeHTTP(c.Writer, c.Request)
+	}
 }
