@@ -19,3 +19,21 @@ type AddPostInput struct {
 type AddPostPayload struct {
 	Post *Post `json:"post"`
 }
+
+type SignInInput struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type SignInPayload struct {
+	Result bool `json:"result"`
+}
+
+type SignUpInput struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type SignUpPayload struct {
+	Result bool `json:"result"`
+}

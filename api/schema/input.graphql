@@ -7,3 +7,13 @@ input AddCommentInput {
   postId: ID!
   content: String!
 }
+
+input SignUpInput {
+  email: String!
+  password: String!
+}
+
+input SignInInput {
+  email: String!
+  password: String!
+}

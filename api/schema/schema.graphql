@@ -2,14 +2,18 @@
 #
 # https://gqlgen.com/getting-started/
 
+directive @requireAuth on FIELD_DEFINITION
+
 type Query {
-  viewer: User!
+  viewer: User! @requireAuth
   posts: [Post]!
 }
 
 type Mutation {
   addPost(input: AddPostInput!): AddPostPayload
   addComment(input: AddCommentInput!): AddCommentPayload
+  signUp(input: SignUpInput!): SignUpPayload!
+  signIn(input: SignInInput!): SignInPayload!
 }
 
 type User {
@@ -38,4 +42,12 @@ type AddPostPayload {
 
 type AddCommentPayload {
   comment: Comment!
+}
+
+type SignUpPayload {
+  result: Boolean!
+}
+
+type SignInPayload {
+  result: Boolean!
 }
