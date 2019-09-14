@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -42,6 +43,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
+	RequireAuth func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -62,6 +64,8 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddComment func(childComplexity int, input AddCommentInput) int
 		AddPost    func(childComplexity int, input AddPostInput) int
+		SignIn     func(childComplexity int, input SignInInput) int
+		SignUp     func(childComplexity int, input SignUpInput) int
 	}
 
 	Post struct {
@@ -77,6 +81,14 @@ type ComplexityRoot struct {
 		Viewer func(childComplexity int) int
 	}
 
+	SignInPayload struct {
+		Result func(childComplexity int) int
+	}
+
+	SignUpPayload struct {
+		Result func(childComplexity int) int
+	}
+
 	User struct {
 		ID    func(childComplexity int) int
 		Name  func(childComplexity int) int
@@ -90,6 +102,8 @@ type CommentResolver interface {
 type MutationResolver interface {
 	AddPost(ctx context.Context, input AddPostInput) (*AddPostPayload, error)
 	AddComment(ctx context.Context, input AddCommentInput) (*AddCommentPayload, error)
+	SignUp(ctx context.Context, input SignUpInput) (*SignUpPayload, error)
+	SignIn(ctx context.Context, input SignInInput) (*SignInPayload, error)
 }
 type PostResolver interface {
 	Author(ctx context.Context, obj *Post) (*User, error)
@@ -177,6 +191,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddPost(childComplexity, args["input"].(AddPostInput)), true
 
+	case "Mutation.signIn":
+		if e.complexity.Mutation.SignIn == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_signIn_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SignIn(childComplexity, args["input"].(SignInInput)), true
+
+	case "Mutation.signUp":
+		if e.complexity.Mutation.SignUp == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_signUp_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SignUp(childComplexity, args["input"].(SignUpInput)), true
+
 	case "Post.author":
 		if e.complexity.Post.Author == nil {
 			break
@@ -225,6 +263,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Viewer(childComplexity), true
+
+	case "SignInPayload.result":
+		if e.complexity.SignInPayload.Result == nil {
+			break
+		}
+
+		return e.complexity.SignInPayload.Result(childComplexity), true
+
+	case "SignUpPayload.result":
+		if e.complexity.SignUpPayload.Result == nil {
+			break
+		}
+
+		return e.complexity.SignUpPayload.Result(childComplexity), true
 
 	case "User.id":
 		if e.complexity.User.ID == nil {
@@ -318,19 +370,33 @@ input AddCommentInput {
   postId: ID!
   content: String!
 }
+
+input SignUpInput {
+  email: String!
+  password: String!
+}
+
+input SignInInput {
+  email: String!
+  password: String!
+}
 `},
 	&ast.Source{Name: "api/schema/schema.graphql", Input: `# GraphQL schema example
 #
 # https://gqlgen.com/getting-started/
 
+directive @requireAuth on FIELD_DEFINITION
+
 type Query {
-  viewer: User!
+  viewer: User! @requireAuth
   posts: [Post]!
 }
 
 type Mutation {
   addPost(input: AddPostInput!): AddPostPayload
   addComment(input: AddCommentInput!): AddCommentPayload
+  signUp(input: SignUpInput!): SignUpPayload!
+  signIn(input: SignInInput!): SignInPayload!
 }
 
 type User {
@@ -360,6 +426,14 @@ type AddPostPayload {
 type AddCommentPayload {
   comment: Comment!
 }
+
+type SignUpPayload {
+  result: Boolean!
+}
+
+type SignInPayload {
+  result: Boolean!
+}
 `},
 )
 
@@ -387,6 +461,34 @@ func (ec *executionContext) field_Mutation_addPost_args(ctx context.Context, raw
 	var arg0 AddPostInput
 	if tmp, ok := rawArgs["input"]; ok {
 		arg0, err = ec.unmarshalNAddPostInput2githubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐAddPostInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_signIn_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 SignInInput
+	if tmp, ok := rawArgs["input"]; ok {
+		arg0, err = ec.unmarshalNSignInInput2githubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐSignInInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_signUp_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 SignUpInput
+	if tmp, ok := rawArgs["input"]; ok {
+		arg0, err = ec.unmarshalNSignUpInput2githubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐSignUpInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -712,6 +814,94 @@ func (ec *executionContext) _Mutation_addComment(ctx context.Context, field grap
 	return ec.marshalOAddCommentPayload2ᚖgithubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐAddCommentPayload(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_signUp(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+		ec.Tracer.EndFieldExecution(ctx)
+	}()
+	rctx := &graphql.ResolverContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_signUp_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	rctx.Args = args
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SignUp(rctx, args["input"].(SignUpInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*SignUpPayload)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNSignUpPayload2ᚖgithubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐSignUpPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_signIn(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+		ec.Tracer.EndFieldExecution(ctx)
+	}()
+	rctx := &graphql.ResolverContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_signIn_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	rctx.Args = args
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SignIn(rctx, args["input"].(SignInInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*SignInPayload)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNSignInPayload2ᚖgithubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐSignInPayload(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Post_id(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
 	ctx = ec.Tracer.StartFieldExecution(ctx, field)
 	defer func() {
@@ -912,8 +1102,24 @@ func (ec *executionContext) _Query_viewer(ctx context.Context, field graphql.Col
 	ctx = graphql.WithResolverContext(ctx, rctx)
 	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Viewer(rctx)
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().Viewer(rctx)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			return ec.directives.RequireAuth(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, err
+		}
+		if data, ok := tmp.(*User); ok {
+			return data, nil
+		} else if tmp == nil {
+			return nil, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/stobita/graphql-golang-example/internal/graphql.User`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1041,6 +1247,80 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SignInPayload_result(ctx context.Context, field graphql.CollectedField, obj *SignInPayload) (ret graphql.Marshaler) {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+		ec.Tracer.EndFieldExecution(ctx)
+	}()
+	rctx := &graphql.ResolverContext{
+		Object:   "SignInPayload",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Result, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _SignUpPayload_result(ctx context.Context, field graphql.CollectedField, obj *SignUpPayload) (ret graphql.Marshaler) {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+		ec.Tracer.EndFieldExecution(ctx)
+	}()
+	rctx := &graphql.ResolverContext{
+		Object:   "SignUpPayload",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Result, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *User) (ret graphql.Marshaler) {
@@ -2350,6 +2630,54 @@ func (ec *executionContext) unmarshalInputAddPostInput(ctx context.Context, obj 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSignInInput(ctx context.Context, obj interface{}) (SignInInput, error) {
+	var it SignInInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "email":
+			var err error
+			it.Email, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "password":
+			var err error
+			it.Password, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSignUpInput(ctx context.Context, obj interface{}) (SignUpInput, error) {
+	var it SignUpInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "email":
+			var err error
+			it.Email, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "password":
+			var err error
+			it.Password, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -2477,6 +2805,16 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec._Mutation_addPost(ctx, field)
 		case "addComment":
 			out.Values[i] = ec._Mutation_addComment(ctx, field)
+		case "signUp":
+			out.Values[i] = ec._Mutation_signUp(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "signIn":
+			out.Values[i] = ec._Mutation_signIn(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2597,6 +2935,60 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
 			out.Values[i] = ec._Query___schema(ctx, field)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var signInPayloadImplementors = []string{"SignInPayload"}
+
+func (ec *executionContext) _SignInPayload(ctx context.Context, sel ast.SelectionSet, obj *SignInPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.RequestContext, sel, signInPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SignInPayload")
+		case "result":
+			out.Values[i] = ec._SignInPayload_result(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var signUpPayloadImplementors = []string{"SignUpPayload"}
+
+func (ec *executionContext) _SignUpPayload(ctx context.Context, sel ast.SelectionSet, obj *SignUpPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.RequestContext, sel, signUpPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SignUpPayload")
+		case "result":
+			out.Values[i] = ec._SignUpPayload_result(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2995,6 +3387,42 @@ func (ec *executionContext) marshalNPost2ᚖgithubᚗcomᚋstobitaᚋgraphqlᚑg
 		return graphql.Null
 	}
 	return ec._Post(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSignInInput2githubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐSignInInput(ctx context.Context, v interface{}) (SignInInput, error) {
+	return ec.unmarshalInputSignInInput(ctx, v)
+}
+
+func (ec *executionContext) marshalNSignInPayload2githubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐSignInPayload(ctx context.Context, sel ast.SelectionSet, v SignInPayload) graphql.Marshaler {
+	return ec._SignInPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSignInPayload2ᚖgithubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐSignInPayload(ctx context.Context, sel ast.SelectionSet, v *SignInPayload) graphql.Marshaler {
+	if v == nil {
+		if !ec.HasError(graphql.GetResolverContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._SignInPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSignUpInput2githubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐSignUpInput(ctx context.Context, v interface{}) (SignUpInput, error) {
+	return ec.unmarshalInputSignUpInput(ctx, v)
+}
+
+func (ec *executionContext) marshalNSignUpPayload2githubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐSignUpPayload(ctx context.Context, sel ast.SelectionSet, v SignUpPayload) graphql.Marshaler {
+	return ec._SignUpPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSignUpPayload2ᚖgithubᚗcomᚋstobitaᚋgraphqlᚑgolangᚑexampleᚋinternalᚋgraphqlᚐSignUpPayload(ctx context.Context, sel ast.SelectionSet, v *SignUpPayload) graphql.Marshaler {
+	if v == nil {
+		if !ec.HasError(graphql.GetResolverContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._SignUpPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {

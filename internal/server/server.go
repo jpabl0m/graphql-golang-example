@@ -7,6 +7,7 @@ import (
 	"github.com/99designs/gqlgen/handler"
 	"github.com/gin-gonic/gin"
 	"github.com/stobita/graphql-golang-example/internal/graphql"
+	"github.com/stobita/graphql-golang-example/internal/storage"
 	"github.com/stobita/graphql-golang-example/internal/usecase"
 )
 
@@ -20,6 +21,11 @@ func Run() {
 
 	r := gin.Default()
 
+	redisClient := storage.NewRedisClient()
+	sessionStore := storage.NewSessionStore(redisClient)
+	middleware := newMiddleware(sessionStore)
+	r.Use(middleware.getAuthenticationMiddleware())
+
 	// r.Use(authenticationMiddleware())
 	r.GET("/", rootHandler())
 	r.POST("/query", queryHandler())
@@ -31,7 +37,9 @@ func Run() {
 func queryHandler() gin.HandlerFunc {
 	u := usecase.New()
 	resolver := graphql.NewResolver(u)
-	h := handler.GraphQL(graphql.NewExecutableSchema(graphql.Config{Resolvers: resolver}))
+	c := graphql.Config{Resolvers: resolver}
+	c.Directives.RequireAuth = graphql.RequireAuthDirective
+	h := handler.GraphQL(graphql.NewExecutableSchema(c))
 	return func(c *gin.Context) {
 		h.ServeHTTP(c.Writer, c.Request)
 	}

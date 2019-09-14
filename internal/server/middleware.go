@@ -2,44 +2,41 @@ package server
 
 import (
 	"context"
-	"errors"
-	"log"
-	"net/http"
-	"os"
 
-	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/dgrijalva/jwt-go/request"
 	"github.com/gin-gonic/gin"
+	"github.com/stobita/graphql-golang-example/internal/usecase"
 )
 
-type contextKey string
+type middleware struct {
+	sessionStore
+}
 
-const userIDContextKey contextKey = "userID"
+type sessionStore interface {
+	Get(sessionID string) (string, error)
+}
 
-func authenticationMiddleware() gin.HandlerFunc {
+func newMiddleware(s sessionStore) *middleware {
+	return &middleware{
+		s,
+	}
+}
+
+const userSessionIDCookieName = "user_session"
+
+func (m *middleware) getAuthenticationMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		secretKey := os.Getenv("JWT_SECRET_KEY")
-		token, err := request.ParseFromRequest(c.Request, request.AuthorizationHeaderExtractor, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, errors.New("unexpected signing method")
-			}
-			return []byte(secretKey), nil
-		})
-		if err != nil || !token.Valid {
-			log.Print(err)
-			c.JSON(http.StatusForbidden, gin.H{"error": "token invalid"})
-			c.Abort()
-			return
-		}
-		if claims, ok := token.Claims.(jwt.MapClaims); ok && claims["sub"] != nil {
-			ctx := context.WithValue(c.Request.Context(), userIDContextKey, claims["sub"])
-			c.Request = c.Request.WithContext(ctx)
+		sessionID, err := c.Request.Cookie(userSessionIDCookieName)
+		if err != nil || c == nil {
 			c.Next()
 			return
 		}
-		c.JSON(http.StatusForbidden, gin.H{"error": "claims insufficient"})
-		c.Abort()
-		return
+		userID, err := m.sessionStore.Get(sessionID.String())
+		if err != nil {
+			c.Next()
+			return
+		}
+		ctx := context.WithValue(c.Request.Context(), usecase.UserIDContextKey, userID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
 	}
-
 }

@@ -1,14 +1,18 @@
 package usecase
 
 // Usecase is application usecase
-type Usecase struct{}
+type usecase struct{}
 
-func New() *Usecase {
-	return &Usecase{}
+func New() Usecase {
+	return &usecase{}
 }
 
+type contextKey string
+
+const UserIDContextKey contextKey = "userID"
+
 // InputPort is input port
-type InputPort interface {
+type Usecase interface {
 	CreatePost(*PostInputData) (*PostOutputData, error)
 	AddComment(*CommentInputData) (*CommentOutputData, error)
 	GetUser() (*UserOutputData, error)
@@ -17,6 +21,8 @@ type InputPort interface {
 	GetPostAuthor(postID string) (*UserOutputData, error)
 	GetPostComments(postID string) ([]*CommentOutputData, error)
 	GetCommentPost(commentID string) (*PostOutputData, error)
+	SignUp(*UserInputData) error
+	SignIn(*UserInputData) error
 }
 
 // PostInputData is input data of post
@@ -29,6 +35,11 @@ type PostInputData struct {
 type CommentInputData struct {
 	PostID  string
 	Content string
+}
+
+type UserInputData struct {
+	Email    string
+	Password string
 }
 
 type UserOutputData struct {
@@ -47,36 +58,44 @@ type CommentOutputData struct {
 }
 
 // CreatePost create new post
-func (u *Usecase) CreatePost(*PostInputData) (*PostOutputData, error) {
+func (u *usecase) CreatePost(*PostInputData) (*PostOutputData, error) {
 	panic("not implemented")
 }
 
 // AddComment add comment to post
-func (u *Usecase) AddComment(*CommentInputData) (*CommentOutputData, error) {
+func (u *usecase) AddComment(*CommentInputData) (*CommentOutputData, error) {
 	panic("not implemented")
 }
 
-func (u *Usecase) GetUser() (*UserOutputData, error) {
+func (u *usecase) GetUser() (*UserOutputData, error) {
 	panic("not implemented")
 }
 
-func (u *Usecase) GetPosts() ([]*PostOutputData, error) {
+func (u *usecase) GetPosts() ([]*PostOutputData, error) {
 	panic("not implemented")
 }
 
-func (u *Usecase) GetUserPosts(userID string) ([]*PostOutputData, error) {
+func (u *usecase) GetUserPosts(userID string) ([]*PostOutputData, error) {
 	panic("not implemented")
 }
 
-func (u *Usecase) GetPostAuthor(postID string) (*UserOutputData, error) {
+func (u *usecase) GetPostAuthor(postID string) (*UserOutputData, error) {
 	panic("not implemented")
 }
 
-func (u *Usecase) GetPostComments(postID string) ([]*CommentOutputData, error) {
+func (u *usecase) GetPostComments(postID string) ([]*CommentOutputData, error) {
 	panic("not implemented")
 }
 
-func (u *Usecase) GetCommentPost(commentID string) (*PostOutputData, error) {
+func (u *usecase) GetCommentPost(commentID string) (*PostOutputData, error) {
 	panic("not implemented")
 
+}
+
+func (u *usecase) SignUp(*UserInputData) error {
+	panic("not implemented")
+}
+
+func (u *usecase) SignIn(*UserInputData) error {
+	panic("not implemented")
 }
